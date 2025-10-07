@@ -1,5 +1,6 @@
 use actix_web::{get, App, HttpResponse, HttpServer, Responder};
 use serde::{Deserialize, Serialize};
+use actix_cors::Cors;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SessionList {
@@ -84,6 +85,7 @@ async fn get_session_names() -> actix_web::Result<HttpResponse> {
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
+          .wrap(Cors::permissive()) // Enable CORS with permissive settings
           .service(greet)
           .service(get_session_list)
           .service(get_session_names)
