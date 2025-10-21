@@ -54,6 +54,77 @@ struct MasterListBills{
     change_date: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct BillOuter{
+    status: Option<String>,
+    bill: Option<BillInner>,
+    url: Option<String>,
+    state_link: Option<String>,
+    completed: u32,
+    status_code: u32,
+    status_date: Option<String>,
+    progress: Option<Vec<progress_dates_inner>>,
+    state: Option<String>,
+    state_id: u32,
+    bill_number: Option<String>,
+    bill_type: Option<String>,
+    bill_type_id: u32,
+    body: Option<String>,
+    body_id: u32,
+    current_body: Option<String>,
+    current_body_id: u32,
+    title: Option<String>,
+    description: Option<String>,
+    pending_committee_id: u32,
+    committee: Option<Vec<String>>,
+    referrals: Option<Vec<String>>,
+    history: Option<Vec<history_inner>>,
+    sponsors: Option<Vec<sponsor_inner>>,
+    sasts: Option<Vec<String>>,
+    subjects: Option<Vec<String>>,
+    texts: Option<Vec<text_inner>>,
+    votes: Option<Vec<String>>,
+    amendments: Option<Vec<String>>,
+    supplements: Option<Vec<String>>,
+    calendar: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct 
+BillInner{
+    bill_id: Option<u32>,
+    change_hash: Option<String>,
+    session_id: Option<u32>,
+    session: Option<BillSessionInner>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct BillSessionInner{
+    session_id: Option<u32>,
+    state_id: Option<u32>,
+    year_start: Option<u32>,
+    year_end: Option<u32>,
+    prefile: Option<u32>,
+    sine_die: Option<u32>,
+    prior: Option<u32>,
+    special: Option<u32>,
+    session_tag: Option<String>,
+    session_title: Option<String>,
+    session_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct progress_dates_inner{}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct history_inner{}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct sponsor_inner{}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct text_inner{}
+
 fn load_env() -> String {
     dotenv::dotenv().ok();
 
@@ -77,29 +148,12 @@ fn parse_session_date(json_data: &str) -> Result<Vec<String>, serde_json::Error>
    Ok(names)
 }
 
-#[get("/masterlist")]
-async fn get_master_list() -> actix_web::Result<HttpResponse> {
-    // Fetch remote body. Map reqwest errors into Actix internal errors so Actix can
-    // return 500s.
-    let api_key = load_env();
-    let resp_text = reqwest::get(format!("https://api.legiscan.com
-/?key={}&op=getMasterList&state=IN&year=2024", api_key)).await
-        .map_err(actix_web::error::ErrorInternalServerError)?
-        .text().await
-        .map_err(actix_web::error::ErrorInternalServerError)?;
-    parse_master_list(&resp_text).map_err(actix_web::error::ErrorInternalServerError)?;
-    // Return the fetched body to the browser. Set a content type if you know the format.
-    Ok(HttpResponse::Ok()
-        .content_type("text/plain; charset=utf-8")
-        .body(resp_text))
-}
-
 #[get("/")]
 async fn greet() -> impl Responder {
     HttpResponse::Ok().body("Hello, World!")
 }
 
-#[get("/master_list")]
+#[get("/master_list_raw")]
 async fn get_masterlist() -> actix_web::Result<HttpResponse> {
     let api_key = load_env();
     let resp_text = reqwest::get(format!("https://api.legiscan.com/?key={}&op=getMasterListRaw&id=2143", api_key)).await
