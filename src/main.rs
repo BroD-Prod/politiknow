@@ -1,11 +1,11 @@
-use actix_web::{get, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, App, HttpResponse, HttpServer, Responder, web};
 use serde::{ Deserialize, Serialize};
 use actix_cors::Cors;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SessionList {
     status: String,
-    sessions: Vec<Session>,
+    sessions: Vec<Session>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,14 +21,14 @@ struct Session {
     session_tag: Option<String>,
     session_title: Option<String>,
     session_name: Option<String>,
-    dataset_hash: Option<String>,
+    dataset_hash: Option<String>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct MasterList{
     status: Option<String>,
     masterlist: Option<MasterListSession>,
-    id: Option<Vec<MasterListBills>>,
+    id: Option<Vec<MasterListBills>>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -44,49 +44,49 @@ struct MasterListSession{
     special: Option<u32>,
     session_tag: Option<String>,
     session_title: Option<String>,
-    session_name: Option<String>,
+    session_name: Option<String>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct MasterListBills{
     bill_id: Option<u32>,
     number: Option<String>,
-    change_date: Option<String>,
+    change_date: Option<String>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct BillOuter{
+struct Bill{
     status: Option<String>,
     bill: Option<BillInner>,
     url: Option<String>,
     state_link: Option<String>,
-    completed: u32,
-    status_code: u32,
+    completed: Option<u32>,
+    status_code: Option<u32>,
     status_date: Option<String>,
-    progress: Option<Vec<progress_dates_inner>>,
+    progress: Option<Vec<ProgressDatesInner>>,
     state: Option<String>,
-    state_id: u32,
+    state_id: Option<u32>,
     bill_number: Option<String>,
     bill_type: Option<String>,
-    bill_type_id: u32,
+    bill_type_id: Option<u32>,
     body: Option<String>,
-    body_id: u32,
+    body_id: Option<u32>,
     current_body: Option<String>,
-    current_body_id: u32,
+    current_body_id: Option<u32>,
     title: Option<String>,
     description: Option<String>,
-    pending_committee_id: u32,
+    pending_committee_id: Option<u32>,
     committee: Option<Vec<String>>,
     referrals: Option<Vec<String>>,
-    history: Option<Vec<history_inner>>,
-    sponsors: Option<Vec<sponsor_inner>>,
+    history: Option<Vec<HistoryInner>>,
+    sponsors: Option<Vec<SponsorInner>>,
     sasts: Option<Vec<String>>,
     subjects: Option<Vec<String>>,
-    texts: Option<Vec<text_inner>>,
+    texts: Option<Vec<TextInner>>,
     votes: Option<Vec<String>>,
     amendments: Option<Vec<String>>,
     supplements: Option<Vec<String>>,
-    calendar: Option<Vec<String>>,
+    calendar: Option<Vec<String>>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -95,7 +95,7 @@ BillInner{
     bill_id: Option<u32>,
     change_hash: Option<String>,
     session_id: Option<u32>,
-    session: Option<BillSessionInner>,
+    session: Option<BillSessionInner>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -110,26 +110,79 @@ struct BillSessionInner{
     special: Option<u32>,
     session_tag: Option<String>,
     session_title: Option<String>,
-    session_name: Option<String>,
+    session_name: Option<String>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct progress_dates_inner{}
+struct ProgressDatesInner{
+    date: Option<String>,
+    event: Option<String>
+}
 
 #[derive(Serialize, Deserialize, Debug)]
-struct history_inner{}
+struct HistoryInner{
+    date: Option<String>,
+    action: Option<String>,
+    chamber: Option<String>,
+    chamber_id: Option<u32>,
+    importance: Option<u32>,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
-struct sponsor_inner{}
+struct SponsorInner{
+    people_id: Option<u32>,
+    people_hash: Option<String>,
+    party_id: Option<u32>,
+    party: Option<String>,
+    name: Option<String>,
+    first_name: Option<String>,
+    middle_name: Option<String>,
+    last_name: Option<String>,
+    suffix: Option<String>,
+    nickname: Option<String>,
+    district: Option<String>,
+    ftm_eid: Option<u32>,
+    votesmart_id: Option<u32>,
+    opensecrets_id: Option<String>,
+    knowwho_pid: Option<u32>,
+    ballotpedia: Option<String>,
+    sponsor_type_id: Option<u32>,
+    sponsor_order: Option<u32>,
+    commitee_sponsor: Option<u32>,
+    committee_id: Option<u32>,
+    state_federal: Option<u32>
+}
 
 #[derive(Serialize, Deserialize, Debug)]
-struct text_inner{}
+struct TextInner{
+    doc_id: Option<u32>,
+    date: Option<String>,
+    r#type: Option<String>,
+    type_id: Option<u32>,
+    mime: Option<String>,
+    mime_id: Option<u32>,
+    url: Option<String>,
+    state_link: Option<String>,
+    text_size: Option<u32>,
+    text_hash: Option<String>,
+    alt_bill_text: Option<String>,
+    alt_mime: Option<String>,
+    alt_mime_id: Option<u32>,
+    alt_state_link: Option<String>,
+    alt_text_size: Option<u32>,
+    alt_text_hash: Option<String>
+}
 
 fn load_env() -> String {
     dotenv::dotenv().ok();
 
     let api_key = dotenv::var("API_KEY").expect("API_KEY must be set");
     return api_key;
+}
+
+fn parse_bill(json_data: &str) -> Result<Bill, serde_json::Error> {
+    let resp: Bill = serde_json::from_str(json_data)?;
+     Ok(resp)
 }
 
 fn parse_master_list(json_data: &str) -> Result<MasterList, serde_json::Error> {
@@ -151,6 +204,21 @@ fn parse_session_date(json_data: &str) -> Result<Vec<String>, serde_json::Error>
 #[get("/")]
 async fn greet() -> impl Responder {
     HttpResponse::Ok().body("Hello, World!")
+}
+
+#[get("get_bill/{bill_id}")]
+async fn get_bill(bill_id: web::Path<u32>) -> actix_web::Result<HttpResponse>{
+    let api_key = load_env();
+    let resp_text = reqwest::get(format!("https://api.legiscan.com/?key={}&op=getBill&id={}", api_key, bill_id)).await
+        .map_err(actix_web::error::ErrorInternalServerError)?
+        .text().await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+        parse_bill(&resp_text).map_err(actix_web::error::ErrorInternalServerError)?;
+
+        Ok(HttpResponse::Ok()
+            .content_type("text/plain; charset=utf-8")
+            .body(resp_text))
 }
 
 #[get("/master_list_raw")]
@@ -212,6 +280,7 @@ async fn main() -> std::io::Result<()> {
           .service(get_session_list)
           .service(get_session_names)
           .service(get_masterlist)
+          .service(get_bill)
     })
    .bind("127.0.0.1:8080")?
    .run()
