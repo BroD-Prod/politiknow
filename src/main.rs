@@ -173,6 +173,39 @@ struct TextInner{
     alt_text_hash: Option<String>
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct PersonOuter{
+    status: Option<String>,
+    person: Option<PersonInner>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct PersonInner{
+    people_id: Option<u32>,
+    person_hash: Option<String>,
+    party_id: Option<String>,
+    state_id: Option<u32>,
+    party: Option<String>,
+    role_id: Option<u32>,
+    role: Option<String>,
+    name: Option<String>,
+    first_name: Option<String>,
+    middle_name: Option<String>,
+    last_name: Option<String>,
+    suffix: Option<String>,
+    nickname: Option<String>,
+    district: Option<String>,
+    ftm_eid: Option<u32>,
+    votesmart_id: Option<u32>,
+    opensecrets_id: Option<String>,
+    knowwho_pid: Option<u32>,
+    ballotpedia: Option<String>,
+    bioguide_id: Option<String>,
+    committee_sponsor: Option<u32>,
+    committee_id: Option<u32>,
+    state_federal: Option<u32>
+}
+
 fn load_env() -> String {
     dotenv::dotenv().ok();
 
@@ -200,6 +233,12 @@ fn parse_session_date(json_data: &str) -> Result<Vec<String>, serde_json::Error>
    let names = list.sessions.iter().map(|s| s.session_name.clone().unwrap_or_default()).collect::<Vec<String>>();
    Ok(names)
 }
+
+fn parse_person(json_data: &str) -> Result<PersonOuter, serde_json::Error> {
+    let resp: PersonOuter = serde_json::from_str(json_data)?;
+     Ok(resp)
+}
+
 
 #[get("/")]
 async fn greet() -> impl Responder {
@@ -271,6 +310,22 @@ async fn get_session_names() -> actix_web::Result<HttpResponse> {
         .body(names.join(", ")))
 }
 
+#[get("/person/{people_id}")]
+async fn get_person(people_id: web::Path<u32>) -> actix_web::Result<HttpResponse>{
+    let api_key = load_env();
+    let resp_text = reqwest::get(format!("https://api.legiscan.com/?key={}&op=getPerson&id={}", api_key, people_id))
+        .await
+        .map_err(actix_web::error::ErrorInternalServerError)?
+        .text().await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    parse_person(&resp_text).map_err(actix_web::error::ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .body(resp_text))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
@@ -281,6 +336,7 @@ async fn main() -> std::io::Result<()> {
           .service(get_session_names)
           .service(get_masterlist)
           .service(get_bill)
+          .service(get_person)
     })
    .bind("127.0.0.1:8080")?
    .run()
